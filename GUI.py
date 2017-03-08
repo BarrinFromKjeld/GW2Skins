@@ -217,13 +217,10 @@ class FrameSkinDisplay(tk.Frame):
 			else:
 				raise Exception('undefined SkinDisplay sub selection type {}'.format (subType))
 			
-			print str(filter)
 			for frame in self.armorDisplays:
-				print str(i)
+				frame.pack_forget()
 				if i in filter:
 					frame.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
-				else:
-					frame.pack_forget()
 				i += 1
 		elif (type == 'Weapon'):
 			i=0
@@ -240,13 +237,10 @@ class FrameSkinDisplay(tk.Frame):
 			else:
 				raise Exception('undefined SkinDisplay sub selection type {}'.format (subType))
 			
-			print str(filter)
 			for frame in self.weaponDisplays:
-				print str(i)
+				frame.pack_forget()
 				if i in filter:
 					frame.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
-				else:
-					frame.pack_forget()
 				i += 1
 		else :
 			raise Exception('undefined SkinDisplay selection type {}'.format (type))
