@@ -28,6 +28,8 @@ XHRChunkNumber    = 100
 
 iconSize = (64,64)
 
+Rarities = ['Junk','Basic','Fine','Masterwork','Rare','Exotic','Ascended','Legendary']
+
 ##########################################
 #          Universal Functions           #
 ##########################################
@@ -180,6 +182,7 @@ class SkinMapEntry(object):
 		self.type = ''
 		self.subtype = ''
 		self.subsubtype = ''
+		self.rarity = 0
 		self.restrictions = []
 		self.iconPath = iconLocation
 		self.iconURL = ''
@@ -249,6 +252,8 @@ class SkinMap(object):
 		self.multiSkinItemsNr = 0
 		self.deleted = 0
 		self.notInSkins = 0
+		self.nonPve = 0
+		self.exoOrHigher = 0
 		self.buyableSkinItemIds = []
 		self.typeDict = {
 			'Light Headgear': {'type': 'Armor','subtype': 'Helm', 'subsubtype': 'Light'},
@@ -333,10 +338,17 @@ class SkinMap(object):
 		skinIds = []
 		isNotTradable = False
 		itemId = 0
+		exoRarityThreshold = Rarities.index('Exotic')
 		knownSkinIds = getKnownIds(self.skins)
 		
 		for item in self.items:
 			flags = item.get("flags",[])
+			modes = item.get("game_types",[])
+			
+			if (not 'Pve' in modes):
+				self.nonPve += 1
+				continue
+			
 			if ('DeleteWarning' in flags):
 				self.deleted += 1
 			#api "prices" refer to oldest version of items so we need to consider deleted items...
@@ -344,6 +356,7 @@ class SkinMap(object):
 			#	continue
 			
 			itemId = item["id"]
+			
 			skinIds = []
 			if ('default_skin' in item):
 				skinIds.append(item["default_skin"])
@@ -353,6 +366,8 @@ class SkinMap(object):
 					self.multiSkinItemsNr += 1
 			else:
 				continue
+			
+			itemRarity = Rarities.index(item.get('rarity','Basic'))
 			
 			isNotTradable = 'AccountBound' in flags or 'SoulbindOnAcquire' in flags or 'MonsterOnly' in flags
 			for skinId in skinIds:
@@ -365,6 +380,12 @@ class SkinMap(object):
 						#print 'adding itemId {} to skinId {}'.format(itemId,skinId)
 						skinMapEntry.itemIds.append(itemId)
 						skinMapEntry.isNotTradable.append(isNotTradable)
+						if (skinMapEntry.rarity > itemRarity):
+							#print ("decrease rarity {} to {} for skin {} because of item {}".format(skinMapEntry.rarity,itemRarity,skinId,itemId))
+							if (skinMapEntry >= exoRarityThreshold and itemRarity < exoRarityThreshold):
+								self.exoOrHigher -= 1
+							skinMapEntry.rarity = itemRarity
+							
 						self.mappedItems += 1
 						if (isNotTradable):
 							self.accountBoundItemsNr += 1
@@ -382,6 +403,9 @@ class SkinMap(object):
 					skin = self.skins[self.skinIdIndex[str(skinId)]]
 					skinMapEntry.name = skin.get('name','')
 					skinMapEntry.type = skin.get('type','')
+					skinMapEntry.rarity = itemRarity
+					if (skinMapEntry.rarity >= exoRarityThreshold):
+						self.exoOrHigher += 1
 					if ('details' in skin):
 						skinDetails = skin.get('details',{})
 						skinMapEntry.subtype = skinDetails.get('type','')
@@ -403,7 +427,7 @@ class SkinMap(object):
 					self.mappedItems += 1
 		self.map = sorted (map, key=lambda skinMapEntry: skinMapEntry.name)
 		self.buildMapIdIndex()
-
+		
 	def buildMapIdIndex (self):
 		print "indexing Map"
 		index = {}
@@ -429,12 +453,14 @@ class SkinMap(object):
 		print 'Nr of owned Skins:      {}'.format(len(self.ownedSkinIdList))
 		print 'Nr of indexed Items:    {}'.format(self.mappedItems)
 		print 'Nr of indexed Skins:    {}'.format(len(self.map))
+		print 'Nr of non PvE Items:    {}'.format(self.nonPve)
 		print 'Nr of AccBound Items:   {}'.format(self.accountBoundItemsNr)
 		print 'Nr of buyable Skins:    {}'.format(self.unboundSkinsNr)
 		print 'Nr of multi-skin-items: {}'.format(self.multiSkinItemsNr)
 		print 'Nr of deleted items:    {}'.format(self.deleted)
 		print 'Nr of itemNotInSkin:    {}'.format(self.notInSkins)
 		print 'Nr of unboundSkinItems: {}'.format(len(self.buyableSkinItemIds))
+		print 'Nr of exotic or higher: {}'.format(self.exoOrHigher)
 		print 'Nr of prices:           {}'.format(len(self.prices))
 
 	def getEntryIdsByCategory(self,category):
@@ -454,25 +480,25 @@ class SkinMap(object):
 		try:
 			return self.map[self.skinMapIdIndex[str(skinId)]]
 		except:
-			return {}
+			return None
 	
 	def getPrice(self,id):
 		try:
 			return self.prices[self.priceIdIndex[str(id)]]
 		except:
-			return {}
+			return None
 	
 	def getItem(self,id):
 		try:
 			return self.items[self.itemIdIndex[str(id)]]
 		except:
-			return {}
+			return None
 
 	def getSkin(self,id):
 		try:
 			return self.skins[self.skinIdIndex[str(id)]]
 		except:
-			return {}
+			return None
 	
 	def getSellPrice(self,id):
 		return self.getPrice(id).get("sells",{}).get("unit_price",0)

@@ -132,9 +132,15 @@ class FrameFilter(tk.Frame):
 		self.varFilterString.set('Search...')
 		self.varCategoryString = tk.StringVar()
 		self.varCategoryString.set('All Types')
+		self.varExoFilter = tk.IntVar()
+		self.varExoFilter.set(0)
 		
 		self.entryFilterText = tk.Entry(self,width=20,textvariable=self.varFilterString)
 		self.entryFilterText.pack(side=tk.LEFT)
+		
+		self.exoFilter = tk.Checkbutton(self,text="hide exotic and higher skins", variable=self.varExoFilter, command=self.exoFilterCallback)
+		self.exoFilter.pack(side=tk.LEFT, padx = (10,0))
+		
 		self.comboboxCategory = ttk.Combobox(self,textvariable=self.varCategoryString)
 		self.comboboxCategory["state"] = 'readonly'
 		self.comboboxCategory.pack(side=tk.RIGHT)
@@ -147,6 +153,12 @@ class FrameFilter(tk.Frame):
 		elif (type == 'Weapon'):
 			self.varCategoryString.set('All Types')
 			self.comboboxCategory["values"] = (self.varCategoryString.get(),)+tuple(WeaponCategories)
+	
+	def exoFilterCallback(self):
+		if (self.varExoFilter.get() == 1):
+			self.parent.hideExosAndHigher()
+		else:
+			self.parent.unhideAll()
 
 class FrameSkinDisplay(tk.Frame):
 	def __init__(self, parent, *args, **kwargs):
@@ -245,6 +257,26 @@ class FrameSkinDisplay(tk.Frame):
 		else :
 			raise Exception('undefined SkinDisplay selection type {}'.format (type))
 	
+	def hideExosAndHigher(self):
+		for frame in self.armorDisplays:
+			frame.setHideFlags('Exotic')
+			frame.setHideFlags('Ascended')
+			frame.setHideFlags('Legendary')
+			frame.showUnhidden()
+		for frame in self.weaponDisplays:
+			frame.setHideFlags('Exotic')
+			frame.setHideFlags('Ascended')
+			frame.setHideFlags('Legendary')
+			frame.showUnhidden()
+		
+	def unhideAll(self):
+		for frame in self.armorDisplays:
+			frame.unsetHideFlags()
+			frame.showUnhidden()
+		for frame in self.weaponDisplays:
+			frame.unsetHideFlags()
+			frame.showUnhidden()
+			
 class SkinTypeDisplayFrame(tk.Frame):
 	def __init__(self, parent, type, name, skinMapEntryIds, *args, **kwargs):
 		tk.Frame.__init__(self, parent, *args, **kwargs)
@@ -280,10 +312,26 @@ class SkinTypeDisplayFrame(tk.Frame):
 			if (skinMapEntry.isBuyable and not(skinMapEntry.isOwned)):
 				label.config(bg = '#50DB00')
 			self.iconLabels.append(label)
-			#grid n*10
-			label.grid(row=pos/10,column=pos%10, padx=0,pady=0)
-			pos += 1
-
+			self.showUnhidden()
+	
+	def setHideFlags(self,rarity):
+		for label in self.iconLabels:
+			label.setHideReasonRarity(rarity)
+	
+	def unsetHideFlags(self):
+		for label in self.iconLabels:
+			label.unsetHideFlag()
+	
+	def showUnhidden(self):
+		pos = 0
+		for label in self.iconLabels:
+			label.grid_forget()
+		for label in self.iconLabels:
+			if (not label.hide):
+				#grid n*10
+				label.grid(row=pos/10,column=pos%10, padx=0,pady=0)
+				pos += 1
+		
 class LabelIcon(tk.Label):
 	def __init__(self, parent, image, skinId, *args, **kwargs):
 		tk.Label.__init__(self, parent, image=image, *args, **kwargs)
@@ -292,6 +340,7 @@ class LabelIcon(tk.Label):
 		self.image = image
 		self.skinId = skinId
 		self.link = ""
+		self.hide = False
 		#self.bind("<Enter>", self.onEnter)
 		#self.bind("<Leave>", self.onLeave)
 		self.bind ("<Button-1>",self.showPopUpWindow)
@@ -304,6 +353,13 @@ class LabelIcon(tk.Label):
 	#def onLeave(self,event):
 	#	self.parent.popUpWindow.place_forget()
 	
+	def setHideReasonRarity(self, rarity):
+		if (rarity == SkinMapBuilder.Rarities[self.main.skinMap.getSkinMapEntry(self.skinId).rarity]):
+			self.hide = True
+	
+	def unsetHideFlag (self):
+		self.hide = False
+		
 	def openLink(self,event):
 		if (self.link <> ""):
 			webbrowser.open_new(self.link)
