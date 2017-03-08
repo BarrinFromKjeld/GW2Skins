@@ -5,9 +5,25 @@ import webbrowser
 
 from lib import SkinMapBuilder
 
+ArmorSelections = ['All','Light','Medium','Heavy','Back']
+
 ArmorCategories = ['Light Headgear','Medium Headgear','Heavy Headgear','Light Shoulders','Medium Shoulders','Heavy Shoulders','Light Chest','Medium Chest','Heavy Chest','Light Gloves','Medium Gloves','Heavy Gloves','Light Leggings','Medium Leggings','Heavy Leggings','Light Boots','Medium Boots','Heavy Boots','Light Aquatic Headgear','Medium Aquatic Headgear','Heavy Aquatic Headgear','Back']
 
+FilterArmorAll = xrange(0,len(ArmorCategories))
+FilterLight = [0,3,6,9,12,15,18]
+FilterMedium = [1,4,7,10,13,16,19]
+FilterHeavy = [2,5,8,11,14,17,20]
+FilterBack = [21]
+
+WeaponSelections = ['All','Two-Handed','One-Handed','Off-Hand','Water']
+
 WeaponCategories = ['Axe','Dagger','Mace','Pistol','Sword','Scepter','Focus','Shield','Torch','Warhorn','Greatsword','Hammer','Longbow','Rifle','Short Bow','Staff','Harpoon Gun','Spear','Trident']
+
+FilterWeaponAll = xrange (0,len(WeaponCategories))
+FilterMain = [0,1,2,3,4,5]
+FilterOff = [6,7,8,9]
+FilterTwo = [10,11,12,13,14,15]
+FilterWater = [16,17,18]
 
 class FrameHeader (tk.Frame):
 	def __init__(self, parent, *args, **kwargs):
@@ -67,20 +83,16 @@ class FrameMenuSelection(tk.Frame):
 		self.type = type
 		self.selections = []
 		if (type == 'Armor'):
-			self.selections = ['All','Light','Medium','Heavy','Back']
+			self.selections = ArmorSelections
 		elif(type == 'Weapon'):
-			self.selections = ['All','Two-Handed','One-Handed','Off-Hand']
+			self.selections = WeaponSelections
 		else:
 			raise Exception('undefined Menu selection type {}'.format (self.type))
 		
 		self.labelMenu = tk.Label(self, text=self.type, justify=tk.LEFT, anchor='w')
-		self.labelMenu.bind ("<Button-1>",self.clickCategory)
+		self.labelMenu.bind ("<Button-1>",self.selectCategory)
 		self.labelMenu.pack(side=tk.TOP,fill=tk.X)
 		self.createMenuItems()
-	
-	def clickCategory(self, event):
-		self.parent.showMenu(self.type)
-		self.parent.parent.frameSkinDisplay.showSkinDisplay(self.type)
 	
 	def createMenuItems(self):
 		self.frameMenuSelectionLables = tk.Frame(self)
@@ -88,7 +100,11 @@ class FrameMenuSelection(tk.Frame):
 		
 		self.labelMenuSelections = []
 		for item in self.selections:
-			self.labelMenuSelections.append(tk.Label(self.frameMenuSelectionLables, text=item, justify=tk.LEFT, anchor='w'))
+			label = tk.Label(self.frameMenuSelectionLables, text=item, justify=tk.LEFT, anchor='w')
+			label.parent=self
+			label.type = item
+			label.bind("<Button-1>",self.selectSubCategory)
+			self.labelMenuSelections.append(label)
 		for label in self.labelMenuSelections:
 			label.pack(side=tk.TOP,fill=tk.X)
 	
@@ -97,7 +113,15 @@ class FrameMenuSelection(tk.Frame):
 		
 	def showSelection(self):
 		self.frameMenuSelectionLables.pack(side=tk.TOP,fill=tk.X,padx=(10, 0))
-
+	
+	def selectCategory(self, event):
+		self.parent.showMenu(self.type)
+		self.parent.parent.frameSkinDisplay.showSkinDisplay(self.type)
+		self.parent.parent.frameSkinDisplay.showSubcategory(self.type,'All')
+	
+	def selectSubCategory(self,event):
+		self.parent.parent.frameSkinDisplay.showSubcategory(self.type,event.widget.type)
+	
 class FrameFilter(tk.Frame):
 	def __init__(self, parent, *args, **kwargs):
 		tk.Frame.__init__(self, parent, *args, **kwargs)
@@ -173,8 +197,60 @@ class FrameSkinDisplay(tk.Frame):
 			self.frameArmorDisplayParent.pack_forget()
 			self.frameWeaponDisplayParent.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
 		else :
-			raise Exception('undefined SkinDisplay selection type {}'.format (self.type))
+			raise Exception('undefined SkinDisplay selection type {}'.format (type))
+		self.showSubcategory(type,'All')
 
+	def showSubcategory(self,type,subType):
+		filter = []
+		if (type == 'Armor'):
+			i=0
+			if (subType == 'All'):
+				filter = FilterArmorAll
+			elif (subType == 'Light'):
+				filter = FilterLight
+			elif (subType == 'Medium'):
+				filter = FilterMedium
+			elif (subType == 'Heavy'):
+				filter = FilterHeavy
+			elif (subType == 'Back'):
+				filter = FilterBack
+			else:
+				raise Exception('undefined SkinDisplay sub selection type {}'.format (subType))
+			
+			print str(filter)
+			for frame in self.armorDisplays:
+				print str(i)
+				if i in filter:
+					frame.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+				else:
+					frame.pack_forget()
+				i += 1
+		elif (type == 'Weapon'):
+			i=0
+			if (subType == 'All'):
+				filter = FilterWeaponAll
+			elif (subType == 'Two-Handed'):
+				filter = FilterTwo
+			elif (subType == 'One-Handed'):
+				filter = FilterMain
+			elif (subType == 'Off-Hand'):
+				filter = FilterOff
+			elif (subType == 'Water'):
+				filter = FilterWater
+			else:
+				raise Exception('undefined SkinDisplay sub selection type {}'.format (subType))
+			
+			print str(filter)
+			for frame in self.weaponDisplays:
+				print str(i)
+				if i in filter:
+					frame.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+				else:
+					frame.pack_forget()
+				i += 1
+		else :
+			raise Exception('undefined SkinDisplay selection type {}'.format (type))
+	
 class SkinTypeDisplayFrame(tk.Frame):
 	def __init__(self, parent, type, name, skinMapEntryIds, *args, **kwargs):
 		tk.Frame.__init__(self, parent, *args, **kwargs)
